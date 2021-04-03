@@ -1,5 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+
+import {
+  Accordion,
+  AccordionPanel,
+  Box,
+  Button,
+  DataTable,
+  FormField,
+  TextInput,
+  RangeInput,
+} from 'grommet';
+
+import BalanceView from './BalanceView';
 import KeyboardEventHandler from 'react-keyboard-event-handler';
+
+import Binance from 'node-binance-api';
 
 function TransactionLog(props) {
 
@@ -14,6 +29,18 @@ function TransactionLog(props) {
   });
 
   const initialList = [];
+
+  const minBalanceBTC = 0.000000001;
+  const minBalanceUSD = 0.000000001;
+
+  const sellColor = '#f01100';
+  const buyColor  = '#10a000';
+
+  const [balance, setBalance] = useState(initialBalance);
+  const [trxList, setTrxList] = useState(initialList);
+  const [buyPercentage, setBuyPercentage] = useState(0.1);
+  const [sellPercentage, setSellPercentage] = useState(0.1);
+  const [addingTrx, setAddingTrx] = useState(false);
 
   props.trxList.forEach(t => {
 
@@ -32,95 +59,165 @@ function TransactionLog(props) {
       symbol: t.symbol,
       price: t.price,
       amount: t.amount,
-      total: t.total,
-      balanceBTC: initialBalance.BTC,
-      balanceUSD: initialBalance.USD
     });
   });
 
-  const [balance, setBalance] = useState(initialBalance);
-  const [trxList, setTrxList] = useState(initialList);
+  function addBuyTrx() {
 
-  function addTrx() {
-    const now = Date.now();
-    const t = {
-      id: now,
-      timestamp: new Date(now),
-      side:'BUY',
-      symbol:'BTC',
-      price: 57220,
-      amount: 0.0001,
-      total: 5.722
+    if (balance.USD < minBalanceUSD) {
+      return;
     }
 
-    let b = {
-      BTC: balance.BTC,
-      USD: balance.USD,
+    // Lock UI
+    setAddingTrx(true);
+
+    const binance = new Binance();
+    binance.prices('BTCTUSD', (error, ticker) => {
+
+      if (error) return console.error(error);
+
+      const amount = buyPercentage * balance.USD / ticker.BTCTUSD;
+
+      const t = {
+        timestamp: new Date(),
+        side: 'BUY',
+        symbol: 'BTC',
+        price: ticker.BTCTUSD,
+        amount: amount
+      }
+
+      let b = {
+        BTC: balance.BTC + amount,
+        USD: balance.USD - buyPercentage * balance.USD
+      }
+
+      setBalance(b);
+
+      t.balanceUSD = b.USD;
+      t.balanceBTC = b.BTC;
+
+      setTrxList([...trxList, t]);
+
+      setAddingTrx(false);
+    });
+  }
+
+  function addSellTrx() {
+
+    if (balance.BTC < minBalanceBTC) {
+      return;
     }
-    if (t.side === 'BUY') {
-      b.BTC = b.BTC + t.amount;
-      b.USD = b.USD - t.total;
-    } else if (t.side === 'SELL') {
-      b.BTC = b.BTC - t.amount;
-      b.USD = b.USD + t.total;
-    }
 
-    setBalance(b);
+    // Lock UI
+    setAddingTrx(true);
 
-    t.balanceUSD = b.USD;
-    t.balanceBTC = b.BTC;
+    const binance = new Binance();
+    binance.prices('BTCTUSD', (error, ticker) => {
 
-    setTrxList([...trxList, t]);
+      if (error) return console.error(error);
+
+      const amount = sellPercentage * balance.BTC;
+
+      const t = {
+        timestamp: new Date(),
+        side: 'SELL',
+        symbol: 'BTC',
+        price: ticker.BTCTUSD,
+        amount: amount
+      }
+
+      let b = {
+        BTC: balance.BTC - amount,
+        USD: balance.USD + amount * ticker.BTCTUSD
+      }
+
+      setBalance(b);
+
+      t.balanceUSD = b.USD;
+      t.balanceBTC = b.BTC;
+
+      setTrxList([...trxList, t]);
+
+      setAddingTrx(false);
+    });
   }
 
   function handleKey(key, event) {
-    console.log(event.code == 'ShiftRight');
     if (event.code == 'ShiftLeft') {
-      addTrx();
+      addBuyTrx();
+    } else if (event.code == 'ShiftRight') {
+      addSellTrx();
     }
   }
 
-
-  let trxListRows = trxList.map((trx) => 
-    <tr key={trx.id}>
-      <td>{trx.timestamp.toLocaleString('es-AR')}</td>
-      <td><span style={
-      {fontWeight: 'bold', color: trx.side === 'SELL' ? 'red' : 'green'}
-        }>{trx.side}</span></td>
-      <td>{trx.symbol}</td>
-      <td>{usdFormatter.format(trx.price)}</td>
-      <td>{trx.amount.toFixed(6)}</td>
-      <td>{usdFormatter.format(trx.total)}</td>
-      <td>{trx.balanceBTC.toFixed(6)}</td>
-      <td>{usdFormatter.format(trx.balanceUSD)}</td>
-    </tr>
-  );
-  trxListRows = trxListRows.slice(-10);
-
   return <>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Operation</th>
-          <th>Currency</th>
-          <th>Price</th>
-          <th>Amount</th>
-          <th>Total</th>
-          <th>Balance (BTC)</th>
-          <th>Balance (USD)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colSpan={6}></td>
-          <td>{props.initialBalance.BTC}</td>
-          <td>${props.initialBalance.USD}</td>
-        </tr>
-        {trxListRows}
-      </tbody>
-    </table>
-    <button onClick={addTrx}>Buy</button>
+    <BalanceView balance={balance} />
+    <DataTable
+      columns={[
+        {
+          property: 'timestamp',
+          header: 'Date',
+          primary: false,
+          render: datum => (datum.timestamp.toLocaleString('es-AR'))
+        },
+        {
+          property: 'side',
+          header: 'Op.',
+          render: datum => (
+            <span style={{fontWeight: 'bold', color: datum.side === 'SELL' ? sellColor : buyColor}}>
+              {datum.side}</span>
+          ),
+        },
+        {
+          property: 'symbol',
+          header: 'Symbol',
+          primary: false,
+        },
+        {
+          property: 'amount',
+          header: 'Amount',
+          primary: false,
+          render: datum => datum.amount.toFixed(6)
+        },
+        {
+          property: 'price',
+          header: 'Price',
+          primary: false,
+          render: datum => usdFormatter.format(datum.price)
+        },
+      ]}
+      data={trxList.slice(-6)}
+    />
+    <Box direction="row" justify="between" margin={{"bottom": "small"}}>
+      <Button color={buyColor} margin="small" disabled={addingTrx} primary onClick={addBuyTrx} label="Buy" />
+      <Button color={sellColor} margin="small" disabled={addingTrx} primary onClick={addSellTrx} label="Sell" />
+    </Box>
+    <Accordion>
+      <AccordionPanel label="Configuration">
+        <Box direction="row" pad="medium">
+          <FormField label="% of USD Balance to use buying">
+            <RangeInput
+              name="sellPcnt"
+              min={0}
+              max={1}
+              step={0.1}
+              value={buyPercentage}
+              onChange={ event => setBuyPercentage(event.target.value) }
+            />{buyPercentage * 100}%
+          </FormField>
+          <FormField label="% of BTC Balance to use when selling">
+            <RangeInput
+              name="sellPcnt"
+              min={0}
+              max={1}
+              step={0.1}
+              value={sellPercentage}
+              onChange={ event => setSellPercentage(event.target.value) }
+            />{sellPercentage * 100}%
+          </FormField>
+        </Box>
+      </AccordionPanel>
+    </Accordion>
     <KeyboardEventHandler
       handleKeys={['shift']}
       onKeyEvent={(key,e) => handleKey(key, e)} />
