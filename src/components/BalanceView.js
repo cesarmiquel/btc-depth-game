@@ -5,6 +5,7 @@ import {
 import Binance from 'node-binance-api';
 
 const refreshRate = 1000; // WARNING: Never < 1000
+const binance = new Binance();
 
 const usdFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -25,7 +26,6 @@ function BalanceView(props) {
 
   useEffect(
     () => {
-      const binance = new Binance();
       const fetchPrice = () => {
 
         binance.prices('BTCBUSD', (error, ticker) => {
