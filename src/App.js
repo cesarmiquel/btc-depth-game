@@ -7,9 +7,6 @@ import TransactionLog from './components/TransactionLog';
 
 function App() {
 
-  const now = Date.now();
-  const day = 24*60*60*1000;
-
   const trxList = []
 
   const initialBalance = {

@@ -7,7 +7,6 @@ import {
   Button,
   DataTable,
   FormField,
-  TextInput,
   RangeInput,
 } from 'grommet';
 
@@ -72,17 +71,17 @@ function TransactionLog(props) {
     setAddingTrx(true);
 
     const binance = new Binance();
-    binance.prices('BTCTUSD', (error, ticker) => {
+    binance.prices('BTCBUSD', (error, ticker) => {
 
       if (error) return console.error(error);
 
-      const amount = buyPercentage * balance.USD / ticker.BTCTUSD;
+      const amount = buyPercentage * balance.USD / ticker.BTCBUSD;
 
       const t = {
         timestamp: new Date(),
         side: 'BUY',
         symbol: 'BTC',
-        price: ticker.BTCTUSD,
+        price: ticker.BTCBUSD,
         amount: amount
       }
 
@@ -112,7 +111,7 @@ function TransactionLog(props) {
     setAddingTrx(true);
 
     const binance = new Binance();
-    binance.prices('BTCTUSD', (error, ticker) => {
+    binance.prices('BTCBUSD', (error, ticker) => {
 
       if (error) return console.error(error);
 
@@ -122,13 +121,13 @@ function TransactionLog(props) {
         timestamp: new Date(),
         side: 'SELL',
         symbol: 'BTC',
-        price: ticker.BTCTUSD,
+        price: ticker.BTCBUSD,
         amount: amount
       }
 
       let b = {
         BTC: balance.BTC - amount,
-        USD: balance.USD + amount * ticker.BTCTUSD
+        USD: balance.USD + amount * ticker.BTCBUSD
       }
 
       setBalance(b);
@@ -143,9 +142,9 @@ function TransactionLog(props) {
   }
 
   function handleKey(key, event) {
-    if (event.code == 'ShiftLeft') {
+    if (event.code === 'ShiftLeft') {
       addBuyTrx();
-    } else if (event.code == 'ShiftRight') {
+    } else if (event.code === 'ShiftRight') {
       addSellTrx();
     }
   }

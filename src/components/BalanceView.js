@@ -12,7 +12,7 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
 });
 
 const BTCPriceQuote = (props) => {
-  return <span>BTCTUSD: <strong>{
+  return <span>BTC/BUSD: <strong>{
     props.value > 0 ?
       usdFormatter.format(props.value) :
       '-'
@@ -25,9 +25,9 @@ function BalanceView(props) {
   const [currentPrice, setPrice] = useState(-1);
   const fetchPrice = () => {
 
-    binance.prices('BTCTUSD', (error, ticker) => {
+    binance.prices('BTCBUSD', (error, ticker) => {
       if (error) return console.error(error);
-      setPrice(ticker.BTCTUSD);
+      setPrice(ticker.BTCBUSD);
     });
   }
 
@@ -36,7 +36,7 @@ function BalanceView(props) {
       const id = setInterval(fetchPrice, refreshRate);
       return () => clearInterval(id);
     },
-    [currentPrice]
+    [currentPrice, fetchPrice]
   );
 
   return <Box
