@@ -21,22 +21,23 @@ const BTCPriceQuote = (props) => {
 
 function BalanceView(props) {
 
-  const binance = new Binance();
   const [currentPrice, setPrice] = useState(-1);
-  const fetchPrice = () => {
-
-    binance.prices('BTCBUSD', (error, ticker) => {
-      if (error) return console.error(error);
-      setPrice(ticker.BTCBUSD);
-    });
-  }
 
   useEffect(
     () => {
+      const binance = new Binance();
+      const fetchPrice = () => {
+
+        binance.prices('BTCBUSD', (error, ticker) => {
+          if (error) return console.error(error);
+          setPrice(ticker.BTCBUSD);
+        });
+      }
+
       const id = setInterval(fetchPrice, refreshRate);
       return () => clearInterval(id);
     },
-    [currentPrice, fetchPrice]
+    [currentPrice]
   );
 
   return <Box
